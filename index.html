@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>صيدلية الغيث</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <link rel="icon" href="copilot_image_1770376590397.jpeg" type="image/jpeg">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Tahoma, sans-serif; background:#f4f6f9; padding:20px; direction:rtl; }
+    h2 { text-align:center; }
+    .input-section,.output-section { background:white; padding:15px; border-radius:10px; margin-bottom:20px; }
+    input,select,button,textarea { padding:8px; margin:5px; border-radius:5px; border:1px solid #ccc; }
+    button { background:#007bff; color:white; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { border:1px solid #ddd; padding:8px; text-align:center; }
+    .actions { display:flex; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    .delete-btn { background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; }
+    .edit-btn { background:#28a745; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-left:5px; }
+  </style>
+</head>
+<body>
+
+  <h2>صيدلية الغيث</h2>
+
+  <div class="input-section">
+    <textarea id="bulkInput" rows="3" placeholder="الصق المواد المنسوخة هنا..."></textarea>
+    <button onclick="addBulk()">إضافة</button><br>
+    <input type="text" id="name" placeholder="اسم المادة">
+    <input type="number" id="quantity" placeholder="العدد">
+    <select id="type">
+      <option>شريط</option><option>أمبول</option><option>علبة</option><option>باكيت</option>
+    </select>
+    <button onclick="addItem()">إضافة</button>
+  </div>
+
+  <div class="output-section">
+    <table id="itemsTable">
+      <thead><tr><th>الاسم</th><th>العدد</th><th>النوع</th><th>إجراءات</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="actions">
+      <button onclick="shareWhatsApp()">مشاركة عبر واتساب</button>
+      <button onclick="window.print()">طباعة</button>
+      <button onclick="exportPDF()">تصدير PDF</button>
+      <button class="delete-btn" onclick="clearAll()">مسح القائمة</button>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const savedData = localStorage.getItem("pharmacyItems");
+      if (savedData) JSON.parse(savedData).forEach(item => addRow(item.name,item.quantity,item.type));
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    };
+
+    function addItem(){
+      const name=document.getElementById('name').value;
+      const quantity=document.getElementById('quantity').value;
+      const type=document.getElementById('type').value;
+      if(!name||!quantity) return alert("يرجى إدخال الاسم والعدد");
+      addRow(name,quantity,type); saveData();
+      document.getElementById('name').value=''; document.getElementById('quantity').value='';
+    }
+
+    function addBulk(){
+      const text=document.getElementById('bulkInput').value.trim();
+      if(!text) return alert("يرجى لصق النصوص أولاً");
+      text.split("\n").forEach(line=>{
+        if(line.trim()){
+          const parts=line.trim().split(" ");
+          let name=parts[0],quantity="-",type="-";
+          if(parts.length>=3){ name=parts[0]; quantity=parts[1]; type=parts[2]; }
+          addRow(name,quantity,type);
+        }
+      });
+      saveData(); document.getElementById('bulkInput').value='';
+    }
+
+    function addRow(name,quantity,type){
+      const table=document.getElementById('itemsTable').querySelector('tbody');
+      const row=table.insertRow();
+      row.insertCell(0).textContent=name;
+      row.insertCell(1).textContent=quantity;
+      row.insertCell(2).textContent=type;
+      const actions=row.insertCell(3);
+      const editBtn=document.createElement("button");
+      editBtn.textContent="تعديل"; editBtn.className="edit-btn";
+      editBtn.onclick=()=>editRow(row); actions.appendChild(editBtn);
+      const delBtn=document.createElement("button");
+      delBtn.textContent="حذف"; delBtn.className="delete-btn";
+      delBtn.onclick=()=>{row.remove(); saveData();}; actions.appendChild(delBtn);
+    }
+
+    function editRow(row){
+      const cells=row.querySelectorAll('td');
+      const name=prompt("تعديل الاسم:",cells[0].textContent);
+      const quantity=prompt("تعديل العدد:",cells[1].textContent);
+      const type=prompt("تعديل النوع:",cells[2].textContent);
+      if(name!==null) cells[0].textContent=name;
+      if(quantity!==null) cells[1].textContent=quantity;
+      if(type!==null) cells[2].textContent=type;
+      saveData();
+    }
+
+    function saveData(){
+      const rows=document.querySelectorAll('#itemsTable tbody tr');
+      const items=[]; rows.forEach(r=>{
+        const c=r.querySelectorAll('td');
+        items.push({name:c[0].textContent,quantity:c[1].textContent,type:c[2].textContent});
+      });
+      localStorage.setItem("pharmacyItems",JSON.stringify(items));
+    }
+
+    function shareWhatsApp(){
+      let text="قائمة صيدلية الغيث:\n";
+      document.querySelectorAll('#itemsTable tbody tr').forEach(r=>{
+        const c=r.querySelectorAll('td');
+        text+=`- ${c[0].textContent} (${c[1].textContent}) ${c[2].textContent}\n`;
+      });
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
+    }
+
+    function exportPDF(){
+      const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+      doc.setFont("Tahoma"); doc.setFontSize(14); doc.text("قائمة صيدلية الغيث",40,40);
+      let y=70;
+      document.querySelectorAll('#itemsTable tbody tr').forEach(r=>{
+        const c=r.querySelectorAll('td');
+        doc.text(`- ${c[0].textContent} (${c[1].textContent}) ${c[2].textContent}`,40,y); y+=20;
+      });
+      doc.save("صيدلية_الغيث.pdf");
+    }
+
+    function clearAll(){ document.querySelector('#itemsTable tbody').innerHTML=''; localStorage.removeItem("pharmacyItems"); }
+  </script>
+
+</body>
+</html>
