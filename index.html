@@ -28,9 +28,10 @@
     <textarea id="bulkInput" rows="3" placeholder="الصق المواد المنسوخة هنا..."></textarea>
     <button onclick="addBulk()">إضافة</button><br>
     <input type="text" id="name" placeholder="اسم المادة">
-    <input type="number" id="quantity" placeholder="العدد">
+    <input type="number" id="quantity" placeholder="العدد (اختياري)">
     <select id="type">
-      <option>شريط</option><option>أمبول</option><option>علبة</option><option>باكيت</option>
+      <option value="">-- النوع (اختياري) --</option>
+      <option>شريط</option><option>أمبول</option><option>علبة</option><option>باكيت</option><option>شراب</option>
     </select>
     <button onclick="addItem()">إضافة</button>
   </div>
@@ -57,12 +58,12 @@
     };
 
     function addItem(){
-      const name=document.getElementById('name').value;
-      const quantity=document.getElementById('quantity').value;
-      const type=document.getElementById('type').value;
-      if(!name||!quantity) return alert("يرجى إدخال الاسم والعدد");
+      const name=document.getElementById('name').value.trim();
+      const quantity=document.getElementById('quantity').value.trim() || "-";
+      const type=document.getElementById('type').value.trim() || "-";
+      if(!name) return alert("يرجى إدخال اسم المادة على الأقل");
       addRow(name,quantity,type); saveData();
-      document.getElementById('name').value=''; document.getElementById('quantity').value='';
+      document.getElementById('name').value=''; document.getElementById('quantity').value=''; document.getElementById('type').value='';
     }
 
     function addBulk(){
@@ -70,9 +71,22 @@
       if(!text) return alert("يرجى لصق النصوص أولاً");
       text.split("\n").forEach(line=>{
         if(line.trim()){
+          // تقسيم بناءً على أول كلمة اسم والباقي نوع إذا وجد
           const parts=line.trim().split(" ");
-          let name=parts[0],quantity="-",type="-";
-          if(parts.length>=3){ name=parts[0]; quantity=parts[1]; type=parts[2]; }
+          let name=line.trim(); // افتراض أن النص كله اسم
+          let quantity="-";
+          let type="-";
+
+          if(parts.length>=2){
+            // إذا كانت الكلمة الأخيرة نوع معروف
+            const lastWord=parts[parts.length-1];
+            const knownTypes=["شريط","أمبول","علبة","باكيت","شراب"];
+            if(knownTypes.includes(lastWord)){
+              type=lastWord;
+              name=parts.slice(0,parts.length-1).join(" "); // الباقي اسم كامل حتى لو فيه فراغات
+            }
+          }
+
           addRow(name,quantity,type);
         }
       });
