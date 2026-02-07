@@ -1,0 +1,17 @@
+
+{
+  "name": "صيدليتي - مدير النواقص",
+  "short_name": "نواقصي",
+  "description": "نظام ذكي لإدارة نواقص الصيدلية",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#065f46",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/822/822143.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
